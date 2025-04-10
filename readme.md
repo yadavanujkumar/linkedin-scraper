@@ -21,9 +21,9 @@ This project provides tools to scrape LinkedIn profiles using Selenium and Playw
 
 
 ## Project Structure
-linkedin-scrapper/ ├── main.py # Selenium-based 
-LinkedIn scraper ├── main2.py # Playwright-based 
-LinkedIn scraper ├── main3.py # 
+- linkedin-scrapper/ ├── main.py # Selenium-based 
+- LinkedIn scraper ├── main2.py # Playwright-based 
+- LinkedIn scraper ├── main3.py # 
 Alternative Selenium-based scraper 
 
 
