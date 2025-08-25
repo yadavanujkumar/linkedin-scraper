@@ -1,11 +1,12 @@
 # Import necessary libraries
 from playwright.sync_api import sync_playwright  # Playwright for browser automation
-import json, time, random  # For JSON handling, delays, and randomness
+import json, time, random, csv  # For JSON handling, delays, randomness, and CSV export
 from pathlib import Path  # For file path handling
 
 # Constants
 CACHE_FILE = "cache.json"  # File to store cached profile URLs
 OUTPUT_FILE = "output.json"  # File to save collected profile data
+CSV_OUTPUT_FILE = "output.csv"  # File to save collected profile data in CSV format
 USER_DATA_DIR = "linkedin_user_data"  # Directory for persistent login session
 MAX_PROFILES = 200  # Maximum number of profiles to scrape
 MAX_ITERATIONS = 20  # Maximum number of iterations (pages) to scan
@@ -36,12 +37,25 @@ def save_cache(cache):
 # 🔄 Save Collected Profiles
 def save_profiles(profiles):
     """
-    Save the collected profile data to the output file.
+    Save the collected profile data to both JSON and CSV files.
     :param profiles: A list of profile data dictionaries to save.
     """
+    # Save as JSON
     with open(OUTPUT_FILE, "w") as f:
         json.dump(profiles, f, indent=2)  # Save profiles with indentation for readability
     print(f"✅ Saved {len(profiles)} profiles to '{OUTPUT_FILE}'")  # Log the save operation
+    
+    # Save as CSV
+    if profiles:
+        fieldnames = ['name', 'profile_url', 'headline', 'location']
+        with open(CSV_OUTPUT_FILE, "w", newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for profile in profiles:
+                # Ensure all fields exist, fill with empty string if missing
+                row = {field: profile.get(field, '') for field in fieldnames}
+                writer.writerow(row)
+        print(f"✅ Saved {len(profiles)} profiles to '{CSV_OUTPUT_FILE}'")  # Log the CSV save operation
 
 # 🚀 Main Scraper Function
 def run_scraper():
@@ -94,8 +108,33 @@ def run_scraper():
                     if name_el and link_el:  # Ensure both elements exist
                         name = name_el.inner_text().strip()  # Get the profile name
                         url = link_el.get_attribute("href").split("?")[0]  # Get the profile URL (without query params)
+                        
+                        # Extract headline/designation
+                        headline = "N/A"
+                        try:
+                            headline_el = card.query_selector(".entity-result__primary-subtitle")
+                            if headline_el:
+                                headline = headline_el.inner_text().strip()
+                        except:
+                            pass
+                        
+                        # Extract location
+                        location = "N/A"
+                        try:
+                            location_el = card.query_selector(".entity-result__secondary-subtitle")
+                            if location_el:
+                                location = location_el.inner_text().strip()
+                        except:
+                            pass
+                        
                         if url not in cache:  # Check if the profile is already cached
-                            collected.append({"name": name, "url": url})  # Add to collected profiles
+                            profile_data = {
+                                "name": name, 
+                                "profile_url": url,
+                                "headline": headline,
+                                "location": location
+                            }
+                            collected.append(profile_data)  # Add to collected profiles
                             cache.add(url)  # Add to cache
                 except Exception as e:
                     # Handle errors while parsing a profile card

@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-import time, json, random
+import time, json, random, csv
 
 # Define a class for LinkedIn scraping functionality
 class LinkedInScraper:
@@ -91,10 +91,32 @@ class LinkedInScraper:
                     url_el = card.find_element(By.CSS_SELECTOR, "a.app-aware-link")
                     name = name_el.text.strip()  # Get the profile name
                     url = url_el.get_attribute("href").split("?")[0]  # Get the profile URL (without query params)
+                    
+                    # Extract headline/designation
+                    headline = "N/A"
+                    try:
+                        headline_el = card.find_element(By.CSS_SELECTOR, ".entity-result__primary-subtitle")
+                        headline = headline_el.text.strip()
+                    except:
+                        pass
+                    
+                    # Extract location
+                    location = "N/A"
+                    try:
+                        location_el = card.find_element(By.CSS_SELECTOR, ".entity-result__secondary-subtitle")
+                        location = location_el.text.strip()
+                    except:
+                        pass
 
                     # Add the profile to the collected list if it hasn't been visited
                     if url not in visited:
-                        collected.append({"name": name, "url": url})
+                        profile_data = {
+                            "name": name, 
+                            "profile_url": url,
+                            "headline": headline,
+                            "location": location
+                        }
+                        collected.append(profile_data)
                         visited.add(url)
 
                         # Stop if the maximum number of profiles is reached
@@ -129,11 +151,25 @@ class LinkedInScraper:
 
     def save_to_file(self, data):
         """
-        Save the collected profile data to a JSON file.
+        Save the collected profile data to both JSON and CSV files.
         :param data: List of profile data to save.
         """
+        # Save as JSON
         with open(self.output_file, "w") as f:
             json.dump(data, f, indent=2)  # Write data to file with indentation for readability
+        
+        # Save as CSV
+        csv_file = self.output_file.replace('.json', '.csv')
+        if data:
+            fieldnames = ['name', 'profile_url', 'headline', 'location']
+            with open(csv_file, "w", newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for profile in data:
+                    # Ensure all fields exist, fill with empty string if missing
+                    row = {field: profile.get(field, '') for field in fieldnames}
+                    writer.writerow(row)
+            print(f"✅ Also saved to CSV: {csv_file}")
 
 #  Usage example
 if __name__ == "__main__":
